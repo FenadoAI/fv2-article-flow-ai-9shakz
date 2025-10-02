@@ -39,13 +39,16 @@ export default function AdminPage() {
     content: "",
     category: "",
     author: "Admin",
-    image_url: ""
+    image_url: "",
+    image_data: ""
   });
   const [categoryForm, setCategoryForm] = useState({
     name: "",
     description: ""
   });
   const [loading, setLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     fetchArticles();
@@ -70,13 +73,59 @@ export default function AdminPage() {
     }
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size exceeds 5MB limit");
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+
+      const response = await axios.post(`${API}/upload-image`, formDataUpload, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.data.success) {
+        setFormData({ ...formData, image_data: response.data.image_data, image_url: "" });
+        setImagePreview(response.data.image_data);
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      alert(error.response?.data?.detail || "Failed to upload image. Please try again.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData({ ...formData, image_data: "", image_url: "" });
+    setImagePreview(null);
+  };
+
   const handleCreateArticle = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       await axios.post(`${API}/articles`, formData);
       setIsCreateOpen(false);
-      setFormData({ title: "", content: "", category: "", author: "Admin", image_url: "" });
+      setFormData({ title: "", content: "", category: "", author: "Admin", image_url: "", image_data: "" });
+      setImagePreview(null);
       fetchArticles();
     } catch (error) {
       console.error("Error creating article:", error);
@@ -93,7 +142,8 @@ export default function AdminPage() {
       await axios.put(`${API}/articles/${editingArticle.id}`, formData);
       setIsEditOpen(false);
       setEditingArticle(null);
-      setFormData({ title: "", content: "", category: "", author: "Admin", image_url: "" });
+      setFormData({ title: "", content: "", category: "", author: "Admin", image_url: "", image_data: "" });
+      setImagePreview(null);
       fetchArticles();
     } catch (error) {
       console.error("Error updating article:", error);
@@ -136,8 +186,10 @@ export default function AdminPage() {
       content: article.content,
       category: article.category,
       author: article.author,
-      image_url: article.image_url || ""
+      image_url: article.image_url || "",
+      image_data: article.image_data || ""
     });
+    setImagePreview(article.image_data || article.image_url || null);
     setIsEditOpen(true);
   };
 
@@ -221,13 +273,36 @@ export default function AdminPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="image_url">Image URL (Optional)</Label>
-                  <Input
-                    id="image_url"
-                    value={formData.image_url}
-                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                    placeholder="https://example.com/image.jpg"
-                  />
+                  <Label htmlFor="image_upload">Upload Image (Optional)</Label>
+                  <div className="space-y-2">
+                    <Input
+                      id="image_upload"
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                    />
+                    {uploadingImage && <p className="text-sm text-gray-500">Uploading image...</p>}
+                    {imagePreview && (
+                      <div className="relative">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-full h-48 object-cover rounded-lg"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                          onClick={handleRemoveImage}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500">Max size: 5MB. Formats: JPEG, PNG, GIF, WebP</p>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="content">Content</Label>
@@ -401,13 +476,36 @@ export default function AdminPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="edit-image_url">Image URL (Optional)</Label>
-              <Input
-                id="edit-image_url"
-                value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                placeholder="https://example.com/image.jpg"
-              />
+              <Label htmlFor="edit-image_upload">Upload Image (Optional)</Label>
+              <div className="space-y-2">
+                <Input
+                  id="edit-image_upload"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                  onChange={handleImageUpload}
+                  disabled={uploadingImage}
+                />
+                {uploadingImage && <p className="text-sm text-gray-500">Uploading image...</p>}
+                {imagePreview && (
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-48 object-cover rounded-lg"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={handleRemoveImage}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">Max size: 5MB. Formats: JPEG, PNG, GIF, WebP</p>
+              </div>
             </div>
             <div>
               <Label htmlFor="edit-content">Content</Label>

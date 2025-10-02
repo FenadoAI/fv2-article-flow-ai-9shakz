@@ -111,10 +111,10 @@ export default function HomePage() {
             {articles.map((article) => (
               <Link key={article.id} to={`/article/${article.id}`}>
                 <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer overflow-hidden">
-                  {article.image_url && (
+                  {(article.image_data || article.image_url) && (
                     <div className="w-full h-48 overflow-hidden">
                       <img
-                        src={article.image_url}
+                        src={article.image_data || article.image_url}
                         alt={article.title}
                         className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                       />

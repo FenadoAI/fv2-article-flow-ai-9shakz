@@ -125,10 +125,10 @@ export default function ArticlePage() {
                 <span>👁️ {article.views} views</span>
               </div>
             </div>
-            {article.image_url && (
+            {(article.image_data || article.image_url) && (
               <div className="mt-6">
                 <img
-                  src={article.image_url}
+                  src={article.image_data || article.image_url}
                   alt={article.title}
                   className="w-full h-auto rounded-lg object-cover max-h-[500px]"
                 />

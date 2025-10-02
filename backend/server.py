@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from dotenv import load_dotenv
-from fastapi import APIRouter, FastAPI, HTTPException, Request
+from fastapi import APIRouter, FastAPI, HTTPException, Request, File, UploadFile
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 from starlette.middleware.cors import CORSMiddleware
+import base64
 
 from ai_agents.agents import AgentConfig, ChatAgent, SearchAgent
 
@@ -73,6 +74,7 @@ class Article(BaseModel):
     category: str
     author: str = "Admin"
     image_url: str = ""
+    image_data: str = ""  # Base64 encoded image
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     views: int = 0
@@ -86,6 +88,7 @@ class ArticleCreate(BaseModel):
     category: str
     author: Optional[str] = "Admin"
     image_url: Optional[str] = ""
+    image_data: Optional[str] = ""
     published: Optional[bool] = True
 
 
@@ -94,6 +97,7 @@ class ArticleUpdate(BaseModel):
     content: Optional[str] = None
     category: Optional[str] = None
     image_url: Optional[str] = None
+    image_data: Optional[str] = None
     published: Optional[bool] = None
 
 
@@ -422,6 +426,42 @@ async def create_category(category_input: CategoryCreate, request: Request):
 
     await db.categories.insert_one(category.model_dump())
     return category
+
+
+@api_router.post("/upload-image")
+async def upload_image(file: UploadFile = File(...)):
+    """Upload an image and return base64 encoded data."""
+    try:
+        # Read file content
+        contents = await file.read()
+
+        # Validate file size (max 5MB)
+        if len(contents) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File size exceeds 5MB limit")
+
+        # Validate file type
+        allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
+        if file.content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed")
+
+        # Encode to base64
+        base64_encoded = base64.b64encode(contents).decode('utf-8')
+
+        # Create data URI
+        image_data = f"data:{file.content_type};base64,{base64_encoded}"
+
+        return {
+            "success": True,
+            "image_data": image_data,
+            "filename": file.filename,
+            "content_type": file.content_type,
+            "size": len(contents)
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Error uploading image")
+        raise HTTPException(status_code=500, detail=f"Error uploading image: {str(exc)}")
 
 
 app.include_router(api_router)

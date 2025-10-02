@@ -98,3 +98,44 @@ Add image option to articles so they can display featured images.
 3. ✅ Featured image thumbnails on homepage grid with hover animation
 4. ✅ Responsive image sizing and cropping
 5. ✅ Backward compatible (existing articles without images work fine)
+
+---
+
+## 2025-10-02: Added Image Upload Functionality (fv2-article-flow-ai-9shakz)
+
+### Requirement
+Replace image URL input with actual file upload functionality so users can upload images directly from their device.
+
+### Implementation Summary
+
+#### Backend Changes
+- ✅ Added `POST /api/upload-image` endpoint for file uploads
+- ✅ Image validation: max 5MB, formats (JPEG, PNG, GIF, WebP)
+- ✅ Base64 encoding with data URI format (data:image/png;base64,...)
+- ✅ Updated `Article` model to include `image_data` field for base64 storage
+- ✅ Updated `ArticleCreate` and `ArticleUpdate` models to accept `image_data`
+- ✅ Added FastAPI `File` and `UploadFile` imports for multipart handling
+- ✅ Endpoint tested successfully with real image upload
+
+#### Frontend Changes
+- ✅ **Admin Page**: Replaced URL input with file upload input (`type="file"`)
+- ✅ Added image preview with live display after upload
+- ✅ Added "Remove" button to clear uploaded image
+- ✅ Upload progress indicator ("Uploading image...")
+- ✅ Client-side validation (file size, file type)
+- ✅ Image preview shows in both Create and Edit dialogs
+- ✅ Updated state management to handle `image_data` and `imagePreview`
+- ✅ **Article Page**: Updated to display `image_data` or fallback to `image_url`
+- ✅ **Home Page**: Updated to display `image_data` or fallback to `image_url`
+- ✅ Frontend build completed successfully
+- ✅ Services restarted
+
+#### Features Delivered
+1. ✅ Direct file upload from device (replaces URL input)
+2. ✅ Live image preview after upload
+3. ✅ Remove image functionality
+4. ✅ Base64 storage in MongoDB (no external file storage needed)
+5. ✅ File validation (size: max 5MB, formats: JPEG/PNG/GIF/WebP)
+6. ✅ Upload progress feedback
+7. ✅ Works seamlessly with existing image URL field (backward compatible)
+8. ✅ Responsive preview in admin forms
