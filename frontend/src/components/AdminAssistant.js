@@ -13,7 +13,7 @@ export default function AdminAssistant({ onCategoryCreated, onArticleCreated }) 
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      content: "Hi! I'm your AI assistant. I can help you:\n• Create articles\n• Show latest articles\n• Create categories\n• List categories\n\nTry: 'Create an article titled Getting Started with content about how to begin in Technology category'"
+      content: "Hi! I'm your AI assistant. I can help you:\n• Create articles\n• Show latest articles\n• Create categories\n• Rename categories\n• List categories\n\nTry: 'Rename category technology to Tech'"
     }
   ]);
   const [inputMessage, setInputMessage] = useState("");
@@ -49,8 +49,8 @@ export default function AdminAssistant({ onCategoryCreated, onArticleCreated }) 
         content: response.data.response
       }]);
 
-      // If category was created, notify parent to refresh
-      if (response.data.action_taken === "create_category" && onCategoryCreated) {
+      // If category was created or renamed, notify parent to refresh
+      if ((response.data.action_taken === "create_category" || response.data.action_taken === "rename_category") && onCategoryCreated) {
         onCategoryCreated();
       }
 

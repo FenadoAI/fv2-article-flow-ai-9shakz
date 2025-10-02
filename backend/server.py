@@ -709,6 +709,98 @@ async def admin_assistant_chat(assistant_request: AdminAssistantRequest, request
                         action_result={"category": category.model_dump()}
                     )
 
+        # Rename category intent
+        elif "rename" in message and "categor" in message:
+            chat_agent = await _get_or_create_agent(request, "chat")
+
+            # Extract old and new category names
+            extraction_prompt = f"""
+            Extract the old category name and new category name from this user request: "{assistant_request.message}"
+
+            Respond in this exact JSON format:
+            {{"old_name": "current category name", "new_name": "new category name"}}
+
+            Example input: "rename category Sports to Athletics"
+            Example output: {{"old_name": "Sports", "new_name": "Athletics"}}
+
+            Return ONLY the JSON object.
+            """
+
+            extraction_result = await chat_agent.execute(extraction_prompt)
+
+            if extraction_result.success:
+                try:
+                    import json
+                    import re
+                    # Clean markdown code blocks
+                    content = extraction_result.content.strip()
+                    content = re.sub(r'^```json\s*', '', content)
+                    content = re.sub(r'^```\s*', '', content)
+                    content = re.sub(r'\s*```$', '', content)
+                    rename_data = json.loads(content.strip())
+
+                    old_name = rename_data.get("old_name", "").strip()
+                    new_name = rename_data.get("new_name", "").strip()
+
+                    if not old_name or not new_name:
+                        return AdminAssistantResponse(
+                            success=False,
+                            response="I couldn't understand which category to rename. Please specify both old and new names. Example: 'Rename category Sports to Athletics'",
+                            error="Missing category names"
+                        )
+
+                    # Find the category by name (case-insensitive)
+                    categories = await db.categories.find().to_list(100)
+                    category_to_rename = None
+
+                    for cat in categories:
+                        if cat['name'].lower() == old_name.lower():
+                            category_to_rename = cat
+                            break
+
+                    if not category_to_rename:
+                        return AdminAssistantResponse(
+                            success=False,
+                            response=f"I couldn't find a category named '{old_name}'. Available categories: {', '.join([c['name'] for c in categories])}",
+                            error="Category not found"
+                        )
+
+                    # Check if new name already exists
+                    new_slug = new_name.lower().replace(" ", "-").replace("_", "-")
+                    existing_new = await db.categories.find_one({"slug": new_slug})
+                    if existing_new and existing_new['id'] != category_to_rename['id']:
+                        return AdminAssistantResponse(
+                            success=False,
+                            response=f"A category named '{new_name}' already exists. Please choose a different name.",
+                            error="Duplicate category name"
+                        )
+
+                    # Update category
+                    await db.categories.update_one(
+                        {"id": category_to_rename['id']},
+                        {"$set": {"name": new_name, "slug": new_slug}}
+                    )
+
+                    # Update all articles with old category name
+                    articles_updated = await db.articles.update_many(
+                        {"category": category_to_rename['name']},
+                        {"$set": {"category": new_name}}
+                    )
+
+                    return AdminAssistantResponse(
+                        success=True,
+                        response=f"Category renamed from '{old_name}' to '{new_name}'! {articles_updated.modified_count} article(s) updated.",
+                        action_taken="rename_category",
+                        action_result={"old_name": old_name, "new_name": new_name, "articles_updated": articles_updated.modified_count}
+                    )
+
+                except json.JSONDecodeError:
+                    return AdminAssistantResponse(
+                        success=False,
+                        response="I couldn't parse the category names. Please try: 'Rename category Sports to Athletics'",
+                        error="JSON parse error"
+                    )
+
         # List categories intent
         elif ("list" in message or "show" in message or "what" in message) and "categor" in message:
             categories = await db.categories.find().sort("name", 1).to_list(100)
@@ -741,6 +833,7 @@ async def admin_assistant_chat(assistant_request: AdminAssistantRequest, request
             - Creating articles (e.g., "create an article titled Hello World with content about greetings in Technology category")
             - Listing latest articles (e.g., "show me latest articles")
             - Creating categories (e.g., "create a category called Technology")
+            - Renaming categories (e.g., "rename category Sports to Athletics")
             - Listing categories (e.g., "show me all categories")
             - General questions about the admin panel
 

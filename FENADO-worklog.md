@@ -273,3 +273,52 @@ Enhance AI assistant to create articles and show latest articles from natural la
 
 ### Status
 ✅ COMPLETED
+
+
+---
+
+## 2025-10-02: Category Rename Feature (fv2-article-flow-ai-9shakz)
+
+### Requirement
+Add functionality to AI assistant to rename categories via natural language.
+
+### Implementation Summary
+
+#### Backend Changes
+- ✅ Added category rename intent detection
+- ✅ AI extracts old and new category names from natural language
+- ✅ Case-insensitive category lookup
+- ✅ Validates category exists before renaming
+- ✅ Checks for duplicate names (prevents conflicts)
+- ✅ Updates category name and slug in database
+- ✅ Automatically updates ALL articles with the old category name
+- ✅ Returns count of articles updated
+- ✅ Helpful error messages with available categories list
+- ✅ Updated general conversation context
+- ✅ Tested successfully with curl
+
+#### Frontend Changes
+- ✅ Updated welcome message to include rename capability
+- ✅ Added rename_category action handler
+- ✅ Auto-refresh categories when renamed
+- ✅ Frontend build completed successfully
+- ✅ Services restarted
+
+#### Features Delivered
+1. ✅ Rename categories via natural language (e.g., "rename category technology to Tech")
+2. ✅ Automatic article category updates (maintains data consistency)
+3. ✅ Duplicate name prevention
+4. ✅ Category not found error handling with suggestions
+5. ✅ Articles count in success message
+6. ✅ Real-time category refresh in admin panel
+7. ✅ Case-insensitive matching
+
+#### Testing
+- ✅ Successfully renamed "technology" to "Tech"
+- ✅ Verified article was automatically updated
+- ✅ Tested non-existent category error handling
+- ✅ Confirmed all categories list properly
+
+### Status
+✅ COMPLETED
+
