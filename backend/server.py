@@ -125,6 +125,19 @@ class AdminLoginResponse(BaseModel):
     token: Optional[str] = None
 
 
+class AdminAssistantRequest(BaseModel):
+    message: str
+    conversation_history: Optional[List[dict]] = None
+
+
+class AdminAssistantResponse(BaseModel):
+    success: bool
+    response: str
+    action_taken: Optional[str] = None
+    action_result: Optional[dict] = None
+    error: Optional[str] = None
+
+
 def _ensure_db(request: Request):
     try:
         return request.app.state.db
@@ -488,6 +501,161 @@ async def upload_image(file: UploadFile = File(...)):
     except Exception as exc:
         logger.exception("Error uploading image")
         raise HTTPException(status_code=500, detail=f"Error uploading image: {str(exc)}")
+
+
+@api_router.post("/admin/assistant/chat", response_model=AdminAssistantResponse)
+async def admin_assistant_chat(assistant_request: AdminAssistantRequest, request: Request):
+    """AI assistant that can execute admin actions via natural language."""
+    db = _ensure_db(request)
+
+    try:
+        # Parse the user's message to detect intent
+        message = assistant_request.message.lower()
+
+        # Category creation intent detection
+        if "create" in message and "categor" in message:
+            # Extract category name using simple parsing or AI
+            chat_agent = await _get_or_create_agent(request, "chat")
+
+            # Ask AI to extract the category name and description
+            extraction_prompt = f"""
+            Extract the category name and optional description from this user request: "{assistant_request.message}"
+
+            Respond in this exact JSON format:
+            {{"name": "category_name", "description": "optional description or empty string"}}
+
+            Only return the JSON, nothing else.
+            """
+
+            extraction_result = await chat_agent.execute(extraction_prompt)
+
+            if extraction_result.success:
+                try:
+                    import json
+                    # Try to parse JSON from the response
+                    category_data = json.loads(extraction_result.content.strip())
+
+                    # Create the category
+                    category_input = CategoryCreate(
+                        name=category_data.get("name", "").strip(),
+                        description=category_data.get("description", "").strip()
+                    )
+
+                    # Generate slug
+                    slug = category_input.name.lower().replace(" ", "-").replace("_", "-")
+
+                    # Check if exists
+                    existing = await db.categories.find_one({"slug": slug})
+                    if existing:
+                        return AdminAssistantResponse(
+                            success=False,
+                            response=f"A category called '{category_input.name}' already exists. Please choose a different name.",
+                            error="Category already exists"
+                        )
+
+                    # Create category
+                    category = Category(
+                        **category_input.model_dump(),
+                        slug=slug
+                    )
+                    await db.categories.insert_one(category.model_dump())
+
+                    return AdminAssistantResponse(
+                        success=True,
+                        response=f"Great! I've created the category '{category.name}' for you. {f'Description: {category.description}' if category.description else ''}",
+                        action_taken="create_category",
+                        action_result={"category": category.model_dump()}
+                    )
+
+                except json.JSONDecodeError:
+                    # Fallback: use AI to extract with simpler prompt
+                    simple_prompt = f"Extract only the category name from: '{assistant_request.message}'. Reply with just the name, nothing else."
+                    simple_result = await chat_agent.execute(simple_prompt)
+
+                    if not simple_result.success or not simple_result.content.strip():
+                        return AdminAssistantResponse(
+                            success=False,
+                            response="I couldn't understand the category name. Could you please rephrase? For example: 'Create a category called Technology'",
+                            error="Could not parse category name"
+                        )
+
+                    category_name = simple_result.content.strip().strip('".,')
+
+                    # Create with extracted name
+                    category_input = CategoryCreate(name=category_name, description="")
+                    slug = category_input.name.lower().replace(" ", "-").replace("_", "-")
+
+                    existing = await db.categories.find_one({"slug": slug})
+                    if existing:
+                        return AdminAssistantResponse(
+                            success=False,
+                            response=f"A category called '{category_input.name}' already exists. Please choose a different name.",
+                            error="Category already exists"
+                        )
+
+                    category = Category(**category_input.model_dump(), slug=slug)
+                    await db.categories.insert_one(category.model_dump())
+
+                    return AdminAssistantResponse(
+                        success=True,
+                        response=f"Done! I've created the category '{category.name}' for you.",
+                        action_taken="create_category",
+                        action_result={"category": category.model_dump()}
+                    )
+
+        # List categories intent
+        elif ("list" in message or "show" in message or "what" in message) and "categor" in message:
+            categories = await db.categories.find().sort("name", 1).to_list(100)
+
+            if not categories:
+                return AdminAssistantResponse(
+                    success=True,
+                    response="You don't have any categories yet. Would you like me to create one?",
+                    action_taken="list_categories",
+                    action_result={"categories": [], "count": 0}
+                )
+
+            category_list = "\n".join([f"• {cat['name']}" for cat in categories])
+            # Convert to Category models to avoid ObjectId serialization issues
+            category_models = [Category(**cat) for cat in categories]
+            return AdminAssistantResponse(
+                success=True,
+                response=f"Here are your categories:\n{category_list}",
+                action_taken="list_categories",
+                action_result={"count": len(categories)}
+            )
+
+        # General conversation - use chat agent
+        else:
+            chat_agent = await _get_or_create_agent(request, "chat")
+
+            # Add context about available actions
+            enhanced_message = f"""
+            You are an AI assistant for an admin dashboard. You can help with:
+            - Creating categories (e.g., "create a category called Technology")
+            - Listing categories (e.g., "show me all categories")
+            - General questions about the admin panel
+
+            User message: {assistant_request.message}
+
+            Please provide a helpful, concise response.
+            """
+
+            result = await chat_agent.execute(enhanced_message)
+
+            return AdminAssistantResponse(
+                success=result.success,
+                response=result.content,
+                error=result.error
+            )
+
+    except Exception as exc:
+        logger.exception("Error in admin assistant")
+        return AdminAssistantResponse(
+            success=False,
+            response="Sorry, I encountered an error. Please try again.",
+            error=str(exc)
+        )
 
 
 app.include_router(api_router)

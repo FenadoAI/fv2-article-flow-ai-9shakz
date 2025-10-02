@@ -23,6 +23,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PlusCircle, Edit, Trash2, Eye, Share2, LogOut } from "lucide-react";
+import AdminAssistant from "@/components/AdminAssistant";
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 const API = `${API_BASE}/api`;
@@ -542,6 +543,9 @@ export default function AdminPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* AI Assistant Chatbot */}
+      <AdminAssistant onCategoryCreated={fetchCategories} />
     </div>
   );
 }
