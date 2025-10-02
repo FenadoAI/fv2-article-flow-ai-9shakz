@@ -65,6 +65,48 @@ class SearchResponse(BaseModel):
     error: Optional[str] = None
 
 
+class Article(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    content: str
+    summary: str = ""
+    category: str
+    author: str = "Admin"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    views: int = 0
+    shares: int = 0
+    published: bool = True
+
+
+class ArticleCreate(BaseModel):
+    title: str
+    content: str
+    category: str
+    author: Optional[str] = "Admin"
+    published: Optional[bool] = True
+
+
+class ArticleUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    category: Optional[str] = None
+    published: Optional[bool] = None
+
+
+class Category(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    slug: str
+    description: str = ""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class CategoryCreate(BaseModel):
+    name: str
+    description: Optional[str] = ""
+
+
 def _ensure_db(request: Request):
     try:
         return request.app.state.db
@@ -234,6 +276,149 @@ async def get_agent_capabilities(request: Request):
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Error getting capabilities")
         return {"success": False, "error": str(exc)}
+
+
+async def _generate_summary(content: str, request: Request) -> str:
+    """Generate AI summary for article content."""
+    try:
+        chat_agent = await _get_or_create_agent(request, "chat")
+        prompt = f"Summarize the following article in 2-3 concise sentences:\n\n{content[:2000]}"
+        result = await chat_agent.execute(prompt)
+        if result.success:
+            return result.content
+        return "Summary generation failed."
+    except Exception as exc:
+        logger.exception("Error generating summary")
+        return "Summary not available."
+
+
+@api_router.post("/articles", response_model=Article)
+async def create_article(article_input: ArticleCreate, request: Request):
+    db = _ensure_db(request)
+
+    # Generate AI summary
+    summary = await _generate_summary(article_input.content, request)
+
+    article = Article(
+        **article_input.model_dump(),
+        summary=summary
+    )
+
+    await db.articles.insert_one(article.model_dump())
+    return article
+
+
+@api_router.get("/articles", response_model=List[Article])
+async def get_articles(
+    request: Request,
+    category: Optional[str] = None,
+    published: Optional[bool] = None,
+    limit: int = 50
+):
+    db = _ensure_db(request)
+
+    query = {}
+    if category:
+        query["category"] = category
+    if published is not None:
+        query["published"] = published
+
+    articles = await db.articles.find(query).sort("created_at", -1).limit(limit).to_list(limit)
+    return [Article(**article) for article in articles]
+
+
+@api_router.get("/articles/{article_id}", response_model=Article)
+async def get_article(article_id: str, request: Request):
+    db = _ensure_db(request)
+
+    article = await db.articles.find_one({"id": article_id})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    # Increment view count
+    await db.articles.update_one(
+        {"id": article_id},
+        {"$inc": {"views": 1}}
+    )
+    article["views"] = article.get("views", 0) + 1
+
+    return Article(**article)
+
+
+@api_router.put("/articles/{article_id}", response_model=Article)
+async def update_article(article_id: str, article_update: ArticleUpdate, request: Request):
+    db = _ensure_db(request)
+
+    article = await db.articles.find_one({"id": article_id})
+    if not article:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    update_data = {k: v for k, v in article_update.model_dump().items() if v is not None}
+
+    # Regenerate summary if content changed
+    if "content" in update_data:
+        update_data["summary"] = await _generate_summary(update_data["content"], request)
+
+    update_data["updated_at"] = datetime.now(timezone.utc)
+
+    await db.articles.update_one({"id": article_id}, {"$set": update_data})
+
+    updated_article = await db.articles.find_one({"id": article_id})
+    return Article(**updated_article)
+
+
+@api_router.delete("/articles/{article_id}")
+async def delete_article(article_id: str, request: Request):
+    db = _ensure_db(request)
+
+    result = await db.articles.delete_one({"id": article_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    return {"success": True, "message": "Article deleted"}
+
+
+@api_router.post("/articles/{article_id}/share")
+async def track_share(article_id: str, request: Request):
+    db = _ensure_db(request)
+
+    result = await db.articles.update_one(
+        {"id": article_id},
+        {"$inc": {"shares": 1}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Article not found")
+
+    return {"success": True, "message": "Share tracked"}
+
+
+@api_router.get("/categories", response_model=List[Category])
+async def get_categories(request: Request):
+    db = _ensure_db(request)
+    categories = await db.categories.find().sort("name", 1).to_list(100)
+    return [Category(**category) for category in categories]
+
+
+@api_router.post("/categories", response_model=Category)
+async def create_category(category_input: CategoryCreate, request: Request):
+    db = _ensure_db(request)
+
+    # Generate slug from name
+    slug = category_input.name.lower().replace(" ", "-").replace("_", "-")
+
+    # Check if slug already exists
+    existing = await db.categories.find_one({"slug": slug})
+    if existing:
+        raise HTTPException(status_code=400, detail="Category with this name already exists")
+
+    category = Category(
+        **category_input.model_dump(),
+        slug=slug
+    )
+
+    await db.categories.insert_one(category.model_dump())
+    return category
 
 
 app.include_router(api_router)
