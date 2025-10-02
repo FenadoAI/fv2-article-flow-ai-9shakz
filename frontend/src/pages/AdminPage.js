@@ -545,7 +545,10 @@ export default function AdminPage() {
       </Dialog>
 
       {/* AI Assistant Chatbot */}
-      <AdminAssistant onCategoryCreated={fetchCategories} />
+      <AdminAssistant
+        onCategoryCreated={fetchCategories}
+        onArticleCreated={fetchArticles}
+      />
     </div>
   );
 }

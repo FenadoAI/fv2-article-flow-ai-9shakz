@@ -8,12 +8,12 @@ import { MessageSquare, X, Send, Bot } from "lucide-react";
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 const API = `${API_BASE}/api`;
 
-export default function AdminAssistant({ onCategoryCreated }) {
+export default function AdminAssistant({ onCategoryCreated, onArticleCreated }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      content: "Hi! I'm your AI assistant. I can help you create categories from natural language. Try saying: 'Create a category called Technology'"
+      content: "Hi! I'm your AI assistant. I can help you:\n• Create articles\n• Show latest articles\n• Create categories\n• List categories\n\nTry: 'Create an article titled Getting Started with content about how to begin in Technology category'"
     }
   ]);
   const [inputMessage, setInputMessage] = useState("");
@@ -52,6 +52,11 @@ export default function AdminAssistant({ onCategoryCreated }) {
       // If category was created, notify parent to refresh
       if (response.data.action_taken === "create_category" && onCategoryCreated) {
         onCategoryCreated();
+      }
+
+      // If article was created, notify parent to refresh
+      if (response.data.action_taken === "create_article" && onArticleCreated) {
+        onArticleCreated();
       }
     } catch (error) {
       console.error("Error sending message:", error);

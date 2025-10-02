@@ -232,3 +232,44 @@ Create AI chatbot assistant on admin dashboard that can create categories from n
 
 ### Status
 ✅ COMPLETED
+
+---
+
+## 2025-10-02: Enhanced AI Assistant - Article Creation & Listing (fv2-article-flow-ai-9shakz)
+
+### Requirement
+Enhance AI assistant to create articles and show latest articles from natural language commands.
+
+### Implementation Summary
+
+#### Backend Changes
+- ✅ Added article creation from natural language
+- ✅ AI extracts title, content, and category from user message
+- ✅ Improved JSON parsing with markdown code block handling (regex cleanup)
+- ✅ Automatic category matching (case-insensitive)
+- ✅ Fallback to first category if specified category not found
+- ✅ Auto-generates AI summary for created articles
+- ✅ Added list articles feature (shows latest 5 with views count)
+- ✅ Updated general conversation context with new capabilities
+- ✅ Tested successfully with curl
+
+#### Frontend Changes
+- ✅ Added `onArticleCreated` callback prop to AdminAssistant
+- ✅ Auto-refresh articles list when article is created
+- ✅ Updated welcome message with article features
+- ✅ Integration with AdminPage for article refresh
+- ✅ Frontend build completed successfully
+- ✅ Services restarted
+
+#### Features Delivered
+1. ✅ Create articles via natural language (e.g., "create an article titled Hello World with content about greetings in Technology category")
+2. ✅ List latest articles (e.g., "show me latest articles")
+3. ✅ AI-powered article detail extraction
+4. ✅ Automatic AI summary generation
+5. ✅ Smart category matching
+6. ✅ Real-time article refresh in admin panel
+7. ✅ Article view count display
+8. ✅ Enhanced help responses
+
+### Status
+✅ COMPLETED

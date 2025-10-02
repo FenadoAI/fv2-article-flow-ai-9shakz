@@ -512,8 +512,114 @@ async def admin_assistant_chat(assistant_request: AdminAssistantRequest, request
         # Parse the user's message to detect intent
         message = assistant_request.message.lower()
 
+        # Article creation intent detection
+        if "create" in message and "article" in message:
+            chat_agent = await _get_or_create_agent(request, "chat")
+
+            # Extract article details using AI
+            extraction_prompt = f"""
+            Extract the article title, content, and category from this user request: "{assistant_request.message}"
+
+            You must respond with ONLY a valid JSON object in this exact format, with no additional text before or after:
+            {{"title": "article title", "content": "article content", "category": "category name"}}
+
+            Example input: "create an article titled Hello World with content about greetings in Technology category"
+            Example output: {{"title": "Hello World", "content": "article content about greetings", "category": "Technology"}}
+
+            Return ONLY the JSON object.
+            """
+
+            extraction_result = await chat_agent.execute(extraction_prompt)
+
+            if extraction_result.success:
+                try:
+                    import json
+                    import re
+                    # Try to extract JSON from response (handle markdown code blocks)
+                    content = extraction_result.content.strip()
+                    # Remove markdown code blocks if present
+                    content = re.sub(r'^```json\s*', '', content)
+                    content = re.sub(r'^```\s*', '', content)
+                    content = re.sub(r'\s*```$', '', content)
+                    article_data = json.loads(content.strip())
+
+                    # Validate category exists
+                    category_name = article_data.get("category", "").strip()
+                    categories = await db.categories.find().to_list(100)
+
+                    if not categories:
+                        return AdminAssistantResponse(
+                            success=False,
+                            response="You need to create at least one category first. Try: 'Create a category called Technology'",
+                            error="No categories available"
+                        )
+
+                    # Find matching category or use first one
+                    category_match = None
+                    for cat in categories:
+                        if cat['name'].lower() == category_name.lower():
+                            category_match = cat['name']
+                            break
+
+                    if not category_match:
+                        category_match = categories[0]['name']
+
+                    # Generate AI summary
+                    content = article_data.get("content", "").strip()
+                    summary = await _generate_summary(content, request)
+
+                    # Create article
+                    article = Article(
+                        title=article_data.get("title", "").strip(),
+                        content=content,
+                        category=category_match,
+                        summary=summary,
+                        author="Admin",
+                        published=True
+                    )
+                    await db.articles.insert_one(article.model_dump())
+
+                    return AdminAssistantResponse(
+                        success=True,
+                        response=f"Article created! '{article.title}' has been published in {article.category} category.",
+                        action_taken="create_article",
+                        action_result={"article_id": article.id, "title": article.title}
+                    )
+
+                except json.JSONDecodeError:
+                    return AdminAssistantResponse(
+                        success=False,
+                        response="I couldn't parse the article details. Please be more specific. Example: 'Create an article titled Hello World with content about greetings in Technology category'",
+                        error="Could not parse article data"
+                    )
+
+        # List articles intent
+        elif ("list" in message or "show" in message or "latest" in message) and "article" in message:
+            limit = 5
+            articles = await db.articles.find().sort("created_at", -1).limit(limit).to_list(limit)
+
+            if not articles:
+                return AdminAssistantResponse(
+                    success=True,
+                    response="You don't have any articles yet. Would you like me to create one?",
+                    action_taken="list_articles",
+                    action_result={"count": 0}
+                )
+
+            article_list = "\n".join([
+                f"• {art['title']} ({art['category']}) - {art['views']} views"
+                for art in articles
+            ])
+
+            return AdminAssistantResponse(
+                success=True,
+                response=f"Here are your latest {len(articles)} articles:\n{article_list}",
+                action_taken="list_articles",
+                action_result={"count": len(articles)}
+            )
+
         # Category creation intent detection
-        if "create" in message and "categor" in message:
+        elif "create" in message and "categor" in message:
             # Extract category name using simple parsing or AI
             chat_agent = await _get_or_create_agent(request, "chat")
 
@@ -632,6 +738,8 @@ async def admin_assistant_chat(assistant_request: AdminAssistantRequest, request
             # Add context about available actions
             enhanced_message = f"""
             You are an AI assistant for an admin dashboard. You can help with:
+            - Creating articles (e.g., "create an article titled Hello World with content about greetings in Technology category")
+            - Listing latest articles (e.g., "show me latest articles")
             - Creating categories (e.g., "create a category called Technology")
             - Listing categories (e.g., "show me all categories")
             - General questions about the admin panel
