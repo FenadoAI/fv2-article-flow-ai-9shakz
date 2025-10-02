@@ -139,3 +139,42 @@ Replace image URL input with actual file upload functionality so users can uploa
 6. ✅ Upload progress feedback
 7. ✅ Works seamlessly with existing image URL field (backward compatible)
 8. ✅ Responsive preview in admin forms
+
+---
+
+## 2025-10-02: Secure Admin Panel with Login (fv2-article-flow-ai-9shakz)
+
+### Requirement
+Add authentication to admin panel using username/password login (admin/admin).
+
+### Implementation Summary
+
+#### Backend Changes
+- ✅ Added `AdminLoginRequest` and `AdminLoginResponse` models
+- ✅ Created `POST /api/admin/login` endpoint with hardcoded credentials (admin/admin)
+- ✅ Session token generation using UUID
+- ✅ Returns 401 error for invalid credentials
+- ✅ Tested successfully with curl
+
+#### Frontend Changes
+- ✅ **AdminLoginPage**: New login page with username/password form
+- ✅ Lock icon and centered card design
+- ✅ Form validation and error display
+- ✅ Token storage in localStorage
+- ✅ Redirects to admin panel on successful login
+- ✅ **AdminPage**: Added authentication check in useEffect
+- ✅ Redirects to login if no token found
+- ✅ Added logout button with LogOut icon in header
+- ✅ Logout clears token and redirects to login
+- ✅ **App.js**: Added `/admin/login` route
+- ✅ Frontend build completed successfully
+- ✅ Services restarted
+
+#### Features Delivered
+1. ✅ Login page at `/admin/login` with username/password form
+2. ✅ Protected admin panel - requires authentication
+3. ✅ Session token management in localStorage
+4. ✅ Logout functionality with button in admin header
+5. ✅ Automatic redirect to login if not authenticated
+6. ✅ Error handling for invalid credentials
+7. ✅ Clean UI with lock icon and centered card layout

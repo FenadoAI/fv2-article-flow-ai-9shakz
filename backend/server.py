@@ -114,6 +114,17 @@ class CategoryCreate(BaseModel):
     description: Optional[str] = ""
 
 
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class AdminLoginResponse(BaseModel):
+    success: bool
+    message: str
+    token: Optional[str] = None
+
+
 def _ensure_db(request: Request):
     try:
         return request.app.state.db
@@ -196,6 +207,21 @@ async def get_status_checks(request: Request):
     db = _ensure_db(request)
     status_checks = await db.status_checks.find().to_list(1000)
     return [StatusCheck(**status_check) for status_check in status_checks]
+
+
+@api_router.post("/admin/login", response_model=AdminLoginResponse)
+async def admin_login(login_data: AdminLoginRequest):
+    """Simple admin login endpoint - checks hardcoded credentials."""
+    if login_data.username == "admin" and login_data.password == "admin":
+        # Generate a simple session token (in production, use JWT with expiry)
+        session_token = f"admin_session_{uuid.uuid4()}"
+        return AdminLoginResponse(
+            success=True,
+            message="Login successful",
+            token=session_token
+        )
+    else:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
 @api_router.post("/chat", response_model=ChatResponse)

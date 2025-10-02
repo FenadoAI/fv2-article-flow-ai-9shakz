@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,12 +22,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { PlusCircle, Edit, Trash2, Eye, Share2 } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Eye, Share2, LogOut } from "lucide-react";
 
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8001';
 const API = `${API_BASE}/api`;
 
 export default function AdminPage() {
+  const navigate = useNavigate();
   const [articles, setArticles] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -51,9 +52,16 @@ export default function AdminPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
+    // Check if user is authenticated
+    const token = localStorage.getItem("adminToken");
+    if (!token) {
+      navigate("/admin/login");
+      return;
+    }
+
     fetchArticles();
     fetchCategories();
-  }, []);
+  }, [navigate]);
 
   const fetchArticles = async () => {
     try {
@@ -193,6 +201,11 @@ export default function AdminPage() {
     setIsEditOpen(true);
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("adminToken");
+    navigate("/admin/login");
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -211,9 +224,15 @@ export default function AdminPage() {
               <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
               <p className="text-gray-600 mt-1">Manage your articles and categories</p>
             </div>
-            <Link to="/">
-              <Button variant="outline">View Website</Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link to="/">
+                <Button variant="outline">View Website</Button>
+              </Link>
+              <Button variant="outline" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
