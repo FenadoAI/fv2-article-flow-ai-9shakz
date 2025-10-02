@@ -68,3 +68,33 @@ Build a news website where the user can write and publish articles with:
 - View count incrementing verified
 - Frontend build successful
 - Services restarted successfully
+
+---
+
+## 2025-10-02: Added Image Support to Articles (fv2-article-flow-ai-9shakz)
+
+### Requirement
+Add image option to articles so they can display featured images.
+
+### Implementation Summary
+
+#### Backend Changes
+- ✅ Updated `Article` model to include `image_url` field (optional, defaults to empty string)
+- ✅ Updated `ArticleCreate` model to accept `image_url` parameter
+- ✅ Updated `ArticleUpdate` model to allow updating `image_url`
+- ✅ Tested article creation with image URL successfully
+
+#### Frontend Changes
+- ✅ **Admin Page**: Added "Image URL (Optional)" input field in both Create and Edit article dialogs
+- ✅ **Article Page**: Added image display below article header (shows when image_url exists)
+- ✅ **Home Page**: Added featured image cards with hover zoom effect on article grid
+- ✅ Updated all form state management to handle image_url field
+- ✅ Frontend build completed successfully
+- ✅ Services restarted
+
+#### Features Delivered
+1. ✅ Optional image URL field for all articles
+2. ✅ Image display on article detail page (below title, above content)
+3. ✅ Featured image thumbnails on homepage grid with hover animation
+4. ✅ Responsive image sizing and cropping
+5. ✅ Backward compatible (existing articles without images work fine)

@@ -72,6 +72,7 @@ class Article(BaseModel):
     summary: str = ""
     category: str
     author: str = "Admin"
+    image_url: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     views: int = 0
@@ -84,6 +85,7 @@ class ArticleCreate(BaseModel):
     content: str
     category: str
     author: Optional[str] = "Admin"
+    image_url: Optional[str] = ""
     published: Optional[bool] = True
 
 
@@ -91,6 +93,7 @@ class ArticleUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     category: Optional[str] = None
+    image_url: Optional[str] = None
     published: Optional[bool] = None
 
 

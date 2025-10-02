@@ -110,7 +110,16 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {articles.map((article) => (
               <Link key={article.id} to={`/article/${article.id}`}>
-                <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
+                <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer overflow-hidden">
+                  {article.image_url && (
+                    <div className="w-full h-48 overflow-hidden">
+                      <img
+                        src={article.image_url}
+                        alt={article.title}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  )}
                   <CardHeader>
                     <div className="flex justify-between items-start mb-2">
                       <Badge variant="secondary">{article.category}</Badge>

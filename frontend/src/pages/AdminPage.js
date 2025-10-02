@@ -38,7 +38,8 @@ export default function AdminPage() {
     title: "",
     content: "",
     category: "",
-    author: "Admin"
+    author: "Admin",
+    image_url: ""
   });
   const [categoryForm, setCategoryForm] = useState({
     name: "",
@@ -75,7 +76,7 @@ export default function AdminPage() {
     try {
       await axios.post(`${API}/articles`, formData);
       setIsCreateOpen(false);
-      setFormData({ title: "", content: "", category: "", author: "Admin" });
+      setFormData({ title: "", content: "", category: "", author: "Admin", image_url: "" });
       fetchArticles();
     } catch (error) {
       console.error("Error creating article:", error);
@@ -92,7 +93,7 @@ export default function AdminPage() {
       await axios.put(`${API}/articles/${editingArticle.id}`, formData);
       setIsEditOpen(false);
       setEditingArticle(null);
-      setFormData({ title: "", content: "", category: "", author: "Admin" });
+      setFormData({ title: "", content: "", category: "", author: "Admin", image_url: "" });
       fetchArticles();
     } catch (error) {
       console.error("Error updating article:", error);
@@ -134,7 +135,8 @@ export default function AdminPage() {
       title: article.title,
       content: article.content,
       category: article.category,
-      author: article.author
+      author: article.author,
+      image_url: article.image_url || ""
     });
     setIsEditOpen(true);
   };
@@ -216,6 +218,15 @@ export default function AdminPage() {
                     id="author"
                     value={formData.author}
                     onChange={(e) => setFormData({ ...formData, author: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="image_url">Image URL (Optional)</Label>
+                  <Input
+                    id="image_url"
+                    value={formData.image_url}
+                    onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                    placeholder="https://example.com/image.jpg"
                   />
                 </div>
                 <div>
@@ -388,6 +399,15 @@ export default function AdminPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-image_url">Image URL (Optional)</Label>
+              <Input
+                id="edit-image_url"
+                value={formData.image_url}
+                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
+                placeholder="https://example.com/image.jpg"
+              />
             </div>
             <div>
               <Label htmlFor="edit-content">Content</Label>
