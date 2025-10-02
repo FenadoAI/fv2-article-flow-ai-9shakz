@@ -223,5 +223,12 @@ Create AI chatbot assistant on admin dashboard that can create categories from n
 7. ✅ Error handling and fallback responses
 8. ✅ AI-powered intent detection and name extraction
 
+#### Bug Fix: Chat Scrolling
+- ✅ Added `overflow-hidden` to CardContent to constrain flex layout
+- ✅ Added auto-scroll functionality with useRef and useEffect
+- ✅ Messages automatically scroll to bottom when new messages arrive
+- ✅ Fixed chat going out of bounds
+- ✅ Frontend rebuilt and restarted
+
 ### Status
 ✅ COMPLETED
